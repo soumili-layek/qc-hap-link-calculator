@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QC-HAP Telemetry & Quantum FSO Link Calculator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #05070d; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Custom slider styling */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--fill-color, #38bdf8) var(--fill-percent, 50%), #1e293b var(--fill-percent, 50%));
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--fill-color, #38bdf8);
+    box-shadow: 0 0 10px var(--fill-color, #38bdf8);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--fill-color, #38bdf8);
+    box-shadow: 0 0 10px var(--fill-color, #38bdf8);
+    cursor: pointer;
+  }
+
+  .glow-cyan { box-shadow: 0 0 40px -10px rgba(56, 189, 248, 0.35); }
+  .glow-violet { box-shadow: 0 0 40px -10px rgba(167, 139, 250, 0.35); }
+
+  .panel {
+    background: radial-gradient(circle at top left, rgba(30,41,59,0.6), rgba(2,6,16,0.6));
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(148,163,184,0.12);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(56,189,248,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+</style>
+</head>
+<body class="min-h-screen text-slate-200 grid-bg">
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+  <!-- Header -->
+  <header class="mb-10 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/60 border border-slate-700 text-xs mono text-cyan-300 mb-4">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+      STRATOSPHERIC LINK SIMULATOR — LIVE
+    </div>
+    <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+      QC-HAP Telemetry & Quantum FSO Link Calculator
+    </h1>
+    <p class="mt-3 text-slate-400 max-w-2xl mx-auto text-sm sm:text-base">
+      Comparative link-budget modeling for a stratospheric Quantum Data Center High-Altitude Platform (QC-HAP): classical RF telemetry vs. free-space optical (FSO) quantum key/state transmission.
+    </p>
+  </header>
+
+  <!-- Result Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+    <div class="panel glow-cyan rounded-2xl p-6 relative overflow-hidden">
+      <div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl"></div>
+      <p class="text-xs mono uppercase tracking-widest text-cyan-400 mb-2">Classical RF Capacity</p>
+      <div class="flex items-baseline gap-2">
+        <span id="rfResult" class="text-5xl font-bold text-white mono">0.00</span>
+        <span class="text-lg text-cyan-300 font-semibold">Mbps</span>
+      </div>
+      <p class="mt-3 text-xs text-slate-500">Shannon-Hartley Theorem — Housekeeping & telemetry downlink</p>
+    </div>
+
+    <div class="panel glow-violet rounded-2xl p-6 relative overflow-hidden">
+      <div class="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/10 rounded-full blur-2xl"></div>
+      <p class="text-xs mono uppercase tracking-widest text-violet-400 mb-2">Quantum FSO Secure Rate</p>
+      <div class="flex items-baseline gap-2">
+        <span id="fsoResult" class="text-5xl font-bold text-white mono">0.00</span>
+        <span class="text-lg text-violet-300 font-semibold">M-Qubits/s</span>
+      </div>
+      <p class="mt-3 text-xs text-slate-500">Effective quantum-state throughput via free-space optical link</p>
+    </div>
+  </div>
+
+  <!-- Ratio Bar -->
+  <div class="panel rounded-2xl p-6 mb-10">
+    <div class="flex justify-between items-center mb-2">
+      <span class="text-xs mono uppercase tracking-widest text-slate-400">Link Budget Comparison</span>
+      <span id="ratioLabel" class="text-xs mono text-slate-400">—</span>
+    </div>
+    <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden flex">
+      <div id="rfBar" class="h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-300" style="width:50%"></div>
+      <div id="fsoBar" class="h-full bg-gradient-to-r from-violet-400 to-violet-300 transition-all duration-300" style="width:50%"></div>
+    </div>
+    <div class="flex justify-between mt-2 text-[11px] mono text-slate-500">
+      <span>RF (Mbps)</span>
+      <span>Quantum FSO (M-Qubits/s)</span>
+    </div>
+  </div>
+
+  <!-- Input Panels -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- RF Panel -->
+    <div class="panel rounded-2xl p-6">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-300">📡</div>
+        <div>
+          <h2 class="font-semibold text-white text-lg">RF Link Inputs</h2>
+          <p class="text-xs text-slate-500">Classical telemetry channel parameters</p>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <label for="bandwidth" class="text-slate-300">Bandwidth</label>
+            <span class="mono text-cyan-300"><span id="bandwidthVal">20</span> MHz</span>
+          </div>
+          <input type="range" id="bandwidth" min="1" max="100" step="1" value="20" style="--fill-color:#38bdf8">
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1"><span>1</span><span>100</span></div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <label for="snr" class="text-slate-300">Signal-to-Noise Ratio (SNR)</label>
+            <span class="mono text-cyan-300"><span id="snrVal">15</span> dB</span>
+          </div>
+          <input type="range" id="snr" min="1" max="40" step="0.5" value="15" style="--fill-color:#38bdf8">
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1"><span>1</span><span>40</span></div>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] mono text-slate-500 leading-relaxed">
+        C = B · log₂(1 + SNR<sub>linear</sub>)
+      </div>
+    </div>
+
+    <!-- Quantum FSO Panel -->
+    <div class="panel rounded-2xl p-6">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-300">🔭</div>
+        <div>
+          <h2 class="font-semibold text-white text-lg">Quantum FSO Link Inputs</h2>
+          <p class="text-xs text-slate-500">Free-space optical quantum channel parameters</p>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <label for="repRate" class="text-slate-300">Laser Repetition Rate</label>
+            <span class="mono text-violet-300"><span id="repRateVal">100</span> MHz</span>
+          </div>
+          <input type="range" id="repRate" min="10" max="1000" step="10" value="100" style="--fill-color:#a78bfa">
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1"><span>10</span><span>1000</span></div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <label for="transmittance" class="text-slate-300">Atmospheric Transmittance</label>
+            <span class="mono text-violet-300"><span id="transmittanceVal">40</span> %</span>
+          </div>
+          <input type="range" id="transmittance" min="1" max="100" step="1" value="40" style="--fill-color:#a78bfa">
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1"><span>1</span><span>100</span></div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <label for="detectorEff" class="text-slate-300">Detector Efficiency</label>
+            <span class="mono text-violet-300"><span id="detectorEffVal">80</span> %</span>
+          </div>
+          <input type="range" id="detectorEff" min="10" max="100" step="1" value="80" style="--fill-color:#a78bfa">
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1"><span>10</span><span>100</span></div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <label for="errorRate" class="text-slate-300">Effective Error Rate</label>
+            <span class="mono text-violet-300"><span id="errorRateVal">5</span> %</span>
+          </div>
+          <input type="range" id="errorRate" min="0.1" max="20" step="0.1" value="5" style="--fill-color:#a78bfa">
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1"><span>0.1</span><span>20</span></div>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] mono text-slate-500 leading-relaxed">
+        R<sub>Q</sub> = f<sub>rep</sub> · η<sub>atm</sub> · η<sub>det</sub> · (1 − QBER)
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center mt-12 text-xs text-slate-600">
+    QC-HAP Telemetry & Quantum FSO Link Calculator · Client-side simulation only · No data leaves your browser
+  </footer>
+</div>
+
+<script>
+  const els = {
+    bandwidth: document.getElementById('bandwidth'),
+    snr: document.getElementById('snr'),
+    repRate: document.getElementById('repRate'),
+    transmittance: document.getElementById('transmittance'),
+    detectorEff: document.getElementById('detectorEff'),
+    errorRate: document.getElementById('errorRate'),
+  };
+
+  const labels = {
+    bandwidth: document.getElementById('bandwidthVal'),
+    snr: document.getElementById('snrVal'),
+    repRate: document.getElementById('repRateVal'),
+    transmittance: document.getElementById('transmittanceVal'),
+    detectorEff: document.getElementById('detectorEffVal'),
+    errorRate: document.getElementById('errorRateVal'),
+  };
+
+  const rfResultEl = document.getElementById('rfResult');
+  const fsoResultEl = document.getElementById('fsoResult');
+  const rfBar = document.getElementById('rfBar');
+  const fsoBar = document.getElementById('fsoBar');
+  const ratioLabel = document.getElementById('ratioLabel');
+
+  function updateSliderFill(input) {
+    const min = parseFloat(input.min);
+    const max = parseFloat(input.max);
+    const val = parseFloat(input.value);
+    const percent = ((val - min) / (max - min)) * 100;
+    input.style.setProperty('--fill-percent', percent + '%');
+  }
+
+  function formatNum(n) {
+    if (n >= 100) return n.toFixed(1);
+    if (n >= 10) return n.toFixed(2);
+    return n.toFixed(3);
+  }
+
+  function calculate() {
+    const bandwidth = parseFloat(els.bandwidth.value);   // MHz
+    const snr = parseFloat(els.snr.value);                // dB
+    const repRate = parseFloat(els.repRate.value);        // MHz
+    const transmittance = parseFloat(els.transmittance.value); // %
+    const detectorEff = parseFloat(els.detectorEff.value);     // %
+    const errorRate = parseFloat(els.errorRate.value);         // %
+
+    // Classical RF Capacity (Shannon-Hartley), result in Mbps since bandwidth is in MHz
+    const rfCapacity = bandwidth * Math.log2(1 + Math.pow(10, snr / 10));
+
+    // Quantum FSO secure/effective rate, result in M-Qubits/sec
+    const fsoRate = repRate * (transmittance / 100) * (detectorEff / 100) * (1 - errorRate / 100);
+
+    rfResultEl.textContent = formatNum(rfCapacity);
+    fsoResultEl.textContent = formatNum(fsoRate);
+
+    const total = rfCapacity + fsoRate;
+    let rfPercent = 50, fsoPercent = 50;
+    if (total > 0) {
+      rfPercent = (rfCapacity / total) * 100;
+      fsoPercent = 100 - rfPercent;
+    }
+    rfBar.style.width = rfPercent + '%';
+    fsoBar.style.width = fsoPercent + '%';
+
+    const ratio = fsoRate > 0 ? (rfCapacity / fsoRate) : 0;
+    ratioLabel.textContent = `RF / FSO ratio ≈ ${ratio.toFixed(2)}×`;
+  }
+
+  Object.keys(els).forEach((key) => {
+    const input = els[key];
+    updateSliderFill(input);
+    input.addEventListener('input', () => {
+      labels[key].textContent = input.value;
+      updateSliderFill(input);
+      calculate();
+    });
+  });
+
+  calculate();
+</script>
+</body>
+</html>
