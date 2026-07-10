@@ -117,10 +117,13 @@ This is a fully static, client-side single-page application. No installation, pa
 ---
 
 ## 5. Repository Structure
+
+```text
 .
 ├── index.html   # Application: markup, styling, and embedded logic
 ├── README.md    # Project documentation (this file)
 └── LICENSE      # MIT License
+```
 ---
 
 ## 6. Disclaimer
